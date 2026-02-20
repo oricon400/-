@@ -2,11 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>🔮 사주 선택 분석기</title>
+<title>🔮 사주 선택 분석기 PRO</title>
 <style>
     body {
         font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #1f1c2c, #928dab);
+        background: linear-gradient(135deg, #141e30, #243b55);
         color: white;
         text-align: center;
         padding: 40px;
@@ -15,11 +15,11 @@
         background: rgba(255,255,255,0.1);
         padding: 30px;
         border-radius: 15px;
-        width: 400px;
+        width: 500px;
         margin: auto;
         backdrop-filter: blur(10px);
     }
-    input, textarea, button {
+    input, textarea, select, button {
         width: 100%;
         padding: 10px;
         margin-top: 10px;
@@ -40,10 +40,20 @@
 <body>
 
 <div class="container">
-    <h2>🔮 사주 기반 선택 길흉 분석기</h2>
+    <h2>🔮 사주 기반 선택 길흉 분석기 PRO</h2>
 
-    <input type="number" id="birthYear" placeholder="출생년도 입력 (예: 1990)">
+    <input type="number" id="year" placeholder="출생년도">
+    <input type="number" id="month" placeholder="출생월 (1-12)">
+    <input type="number" id="day" placeholder="출생일 (1-31)">
+    <input type="number" id="hour" placeholder="출생시간 (0-23)">
+    
+    <select id="gender">
+        <option value="male">남성</option>
+        <option value="female">여성</option>
+    </select>
+
     <textarea id="choiceText" rows="3" placeholder="선택 내용을 자유롭게 입력하세요"></textarea>
+
     <button onclick="analyze()">분석하기</button>
 
     <div class="result" id="result"></div>
@@ -51,84 +61,113 @@
 
 <script>
 
-// 1️⃣ 간단한 사주 오행 더미 로직
-function analyzeSaju(year) {
-    if (year % 5 === 0) {
-        return {wood:30, fire:25, earth:15, metal:20, water:10};
-    } else if (year % 3 === 0) {
-        return {wood:15, fire:20, earth:30, metal:25, water:10};
-    } else {
-        return {wood:20, fire:15, earth:25, metal:20, water:20};
-    }
+// ----------------------------
+// 1️⃣ 간단 오행 계산 (생년월일 기반 가중치)
+// ----------------------------
+function calculateElements(year, month, day, hour) {
+
+    let wood = (year + month) % 30;
+    let fire = (month + day) % 30;
+    let earth = (day + hour) % 30;
+    let metal = (year + hour) % 30;
+    let water = (month + hour) % 30;
+
+    let total = wood + fire + earth + metal + water;
+
+    return {
+        wood: Math.round(wood/total*100),
+        fire: Math.round(fire/total*100),
+        earth: Math.round(earth/total*100),
+        metal: Math.round(metal/total*100),
+        water: Math.round(water/total*100)
+    };
 }
 
-// 2️⃣ 키워드 → 오행 매핑
-const keywordMapping = {
-    "창업": ["fire", "wood"],
-    "사업": ["fire", "wood"],
-    "투자": ["metal", "water"],
-    "주식": ["metal"],
-    "부동산": ["earth"],
-    "결혼": ["earth", "fire"],
-    "이직": ["wood"],
-    "취업": ["wood"],
-    "공부": ["water", "wood"],
-    "시험": ["water"],
-    "이사": ["wood"],
-    "해외": ["water"]
+// ----------------------------
+// 2️⃣ 의미 기반 오행 사전
+// ----------------------------
+const semanticMap = {
+    wood: ["이직","성장","확장","이사","도전","시작","창업","기획"],
+    fire: ["사업","홍보","브랜드","발표","유튜브","마케팅","리더"],
+    earth: ["부동산","안정","결혼","가정","건설","저축"],
+    metal: ["투자","주식","금융","계약","협상","수익"],
+    water: ["공부","시험","유학","연구","해외","이동","전환"]
 };
 
-function extractElements(text) {
-    let elements = new Set();
-    for (let key in keywordMapping) {
-        if (text.includes(key)) {
-            keywordMapping[key].forEach(e => elements.add(e));
-        }
+// ----------------------------
+// 3️⃣ 텍스트 → 오행 분석
+// ----------------------------
+function analyzeText(text) {
+
+    let score = {wood:0, fire:0, earth:0, metal:0, water:0};
+
+    for (let element in semanticMap) {
+        semanticMap[element].forEach(word => {
+            if (text.includes(word)) {
+                score[element] += 1;
+            }
+        });
     }
-    return Array.from(elements);
+
+    // 🔥 키워드 하나도 없을 경우 → 기본 문장 길이 기반 가중
+    let totalHits = Object.values(score).reduce((a,b)=>a+b,0);
+
+    if (totalHits === 0) {
+        // 문장 길이 기반 랜덤 분산
+        let base = text.length % 5;
+        if (base === 0) score.wood++;
+        if (base === 1) score.fire++;
+        if (base === 2) score.earth++;
+        if (base === 3) score.metal++;
+        if (base === 4) score.water++;
+    }
+
+    return score;
 }
 
-// 3️⃣ 분석 함수
+// ----------------------------
+// 4️⃣ 최종 분석
+// ----------------------------
 function analyze() {
 
-    const year = parseInt(document.getElementById("birthYear").value);
+    const year = parseInt(document.getElementById("year").value);
+    const month = parseInt(document.getElementById("month").value);
+    const day = parseInt(document.getElementById("day").value);
+    const hour = parseInt(document.getElementById("hour").value);
     const text = document.getElementById("choiceText").value;
 
-    if (!year || !text) {
-        document.getElementById("result").innerHTML = "⚠️ 값을 모두 입력해주세요.";
+    if (!year || !month || !day || !hour || !text) {
+        document.getElementById("result").innerHTML = "⚠️ 모든 정보를 입력해주세요.";
         return;
     }
 
-    const saju = analyzeSaju(year);
-    const detected = extractElements(text);
+    const saju = calculateElements(year, month, day, hour);
+    const textScore = analyzeText(text);
 
-    if (detected.length === 0) {
-        document.getElementById("result").innerHTML = "관련 키워드를 찾지 못했습니다.";
-        return;
+    let totalScore = 0;
+
+    for (let element in textScore) {
+        totalScore += saju[element] * textScore[element];
     }
 
-    let score = 0;
-    detected.forEach(e => {
-        score += saju[e];
-    });
-
-    if (score > 100) score = 100;
+    let finalPercent = Math.min(Math.round(totalScore/5),100);
 
     let message = "";
 
-    if (score >= 70) {
-        message = "🔥 긍정적 선택 가능성 높음";
-    } else if (score >= 40) {
-        message = "⚖️ 중립적, 신중 필요";
+    if (finalPercent >= 70) {
+        message = "🔥 매우 긍정적 선택";
+    } else if (finalPercent >= 40) {
+        message = "⚖️ 중립적, 전략 필요";
     } else {
-        message = "⚠️ 리스크 높음";
+        message = "⚠️ 신중 권장";
     }
 
     document.getElementById("result").innerHTML =
-        `감지된 오행: ${detected.join(", ")} <br><br>
-         길흉 확률: <b>${score}%</b><br><br>
-         ${message}<br><br>
-         <small>※ 엔터테인먼트 참고용</small>`;
+        `<b>사주 오행 비율</b><br>
+        목:${saju.wood}% 화:${saju.fire}% 토:${saju.earth}% 금:${saju.metal}% 수:${saju.water}%<br><br>
+        <b>길흉 확률: ${finalPercent}%</b><br><br>
+        ${message}<br><br>
+        <small>※ 참고용 엔터테인먼트 서비스</small>`;
 }
 
 </script>
