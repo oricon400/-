@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>🔮 사주 선택 분석기</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1f1c2c, #928dab);
+        color: white;
+        text-align: center;
+        padding: 40px;
+    }
+    .container {
+        background: rgba(255,255,255,0.1);
+        padding: 30px;
+        border-radius: 15px;
+        width: 400px;
+        margin: auto;
+        backdrop-filter: blur(10px);
+    }
+    input, textarea, button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 8px;
+        border: none;
+    }
+    button {
+        background: #ffcc00;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .result {
+        margin-top: 20px;
+        font-size: 18px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🔮 사주 기반 선택 길흉 분석기</h2>
+
+    <input type="number" id="birthYear" placeholder="출생년도 입력 (예: 1990)">
+    <textarea id="choiceText" rows="3" placeholder="선택 내용을 자유롭게 입력하세요"></textarea>
+    <button onclick="analyze()">분석하기</button>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+
+// 1️⃣ 간단한 사주 오행 더미 로직
+function analyzeSaju(year) {
+    if (year % 5 === 0) {
+        return {wood:30, fire:25, earth:15, metal:20, water:10};
+    } else if (year % 3 === 0) {
+        return {wood:15, fire:20, earth:30, metal:25, water:10};
+    } else {
+        return {wood:20, fire:15, earth:25, metal:20, water:20};
+    }
+}
+
+// 2️⃣ 키워드 → 오행 매핑
+const keywordMapping = {
+    "창업": ["fire", "wood"],
+    "사업": ["fire", "wood"],
+    "투자": ["metal", "water"],
+    "주식": ["metal"],
+    "부동산": ["earth"],
+    "결혼": ["earth", "fire"],
+    "이직": ["wood"],
+    "취업": ["wood"],
+    "공부": ["water", "wood"],
+    "시험": ["water"],
+    "이사": ["wood"],
+    "해외": ["water"]
+};
+
+function extractElements(text) {
+    let elements = new Set();
+    for (let key in keywordMapping) {
+        if (text.includes(key)) {
+            keywordMapping[key].forEach(e => elements.add(e));
+        }
+    }
+    return Array.from(elements);
+}
+
+// 3️⃣ 분석 함수
+function analyze() {
+
+    const year = parseInt(document.getElementById("birthYear").value);
+    const text = document.getElementById("choiceText").value;
+
+    if (!year || !text) {
+        document.getElementById("result").innerHTML = "⚠️ 값을 모두 입력해주세요.";
+        return;
+    }
+
+    const saju = analyzeSaju(year);
+    const detected = extractElements(text);
+
+    if (detected.length === 0) {
+        document.getElementById("result").innerHTML = "관련 키워드를 찾지 못했습니다.";
+        return;
+    }
+
+    let score = 0;
+    detected.forEach(e => {
+        score += saju[e];
+    });
+
+    if (score > 100) score = 100;
+
+    let message = "";
+
+    if (score >= 70) {
+        message = "🔥 긍정적 선택 가능성 높음";
+    } else if (score >= 40) {
+        message = "⚖️ 중립적, 신중 필요";
+    } else {
+        message = "⚠️ 리스크 높음";
+    }
+
+    document.getElementById("result").innerHTML =
+        `감지된 오행: ${detected.join(", ")} <br><br>
+         길흉 확률: <b>${score}%</b><br><br>
+         ${message}<br><br>
+         <small>※ 엔터테인먼트 참고용</small>`;
+}
+
+</script>
+
+</body>
+</html>
